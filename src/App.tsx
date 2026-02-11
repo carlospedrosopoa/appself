@@ -39,6 +39,7 @@ export default function App() {
   const [items, setItems] = useState<KioskItem[]>([]);
   const [candidatos, setCandidatos] = useState<Array<KioskAtleta & { score: number }>>([]);
   const [faceSaved, setFaceSaved] = useState(false);
+  const [showFaceEnroll, setShowFaceEnroll] = useState(false);
 
   const pointId = useMemo(() => (POINT_ID ? String(POINT_ID) : ""), []);
 
@@ -73,6 +74,7 @@ export default function App() {
     setItems([]);
     setCandidatos([]);
     setFaceSaved(false);
+    setShowFaceEnroll(false);
   }, []);
 
   useEffect(() => {
@@ -97,6 +99,7 @@ export default function App() {
       setCard(opened.card);
       await refreshCard(opened.card.id);
       setFaceSaved(false);
+      setShowFaceEnroll(false);
       setStep("comanda");
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "Falha ao buscar atleta");
@@ -122,6 +125,7 @@ export default function App() {
           setCard(opened.card);
           await refreshCard(opened.card.id);
           setFaceSaved(false);
+          setShowFaceEnroll(false);
           setStep("comanda");
           return;
         }
@@ -146,6 +150,7 @@ export default function App() {
         setCard(opened.card);
         await refreshCard(opened.card.id);
         setFaceSaved(false);
+        setShowFaceEnroll(false);
         setStep("comanda");
       } catch (e: any) {
         setError(e?.message ? String(e.message) : "Falha ao abrir comanda");
@@ -201,6 +206,7 @@ export default function App() {
           modelVersion: FACE_MODEL_VERSION,
         });
         setFaceSaved(true);
+        setShowFaceEnroll(false);
       } catch (e: any) {
         setFaceSaved(false);
         setError(e?.message ? String(e.message) : "Falha ao cadastrar rosto");
@@ -310,8 +316,19 @@ export default function App() {
             </div>
 
             <div className="stack">
-              <div className="muted">Criar/atualizar reconhecimento facial</div>
-              <FaceIdentify onEmbedding={handleCadastrarRosto} disabled={busy} size="large" />
+              <div className="row row--space">
+                <div className="muted">Reconhecimento facial</div>
+                {showFaceEnroll ? (
+                  <button className="btn btn--ghost" onClick={() => setShowFaceEnroll(false)} disabled={busy}>
+                    Fechar câmera
+                  </button>
+                ) : (
+                  <button className="btn btn--ghost" onClick={() => setShowFaceEnroll(true)} disabled={busy}>
+                    Criar/atualizar
+                  </button>
+                )}
+              </div>
+              {showFaceEnroll ? <FaceIdentify onEmbedding={handleCadastrarRosto} disabled={busy} size="large" /> : null}
               {faceSaved ? <div className="alert alert--success">Reconhecimento facial salvo.</div> : null}
             </div>
 
