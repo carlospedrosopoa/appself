@@ -3,6 +3,7 @@ import "./App.css";
 import {
   kioskAdicionarItem,
   kioskBuscarAtletaPorTelefone,
+  kioskCadastrarFaceAtleta,
   kioskGetComanda,
   kioskObterOuCriarComanda,
   kioskReconhecerAtleta,
@@ -16,6 +17,7 @@ import { FaceIdentify } from "./components/FaceIdentify";
 type Step = "idle" | "phone" | "face" | "pick" | "comanda" | "scan";
 
 const POINT_ID = import.meta.env.VITE_POINT_ID as string | undefined;
+const FACE_MODEL_VERSION = "mediapipe-image-embedder-v1";
 
 function normalizePhone(value: string) {
   return value.replace(/\D/g, "");
@@ -36,6 +38,7 @@ export default function App() {
   const [card, setCard] = useState<KioskCard | null>(null);
   const [items, setItems] = useState<KioskItem[]>([]);
   const [candidatos, setCandidatos] = useState<Array<KioskAtleta & { score: number }>>([]);
+  const [faceSaved, setFaceSaved] = useState(false);
 
   const pointId = useMemo(() => (POINT_ID ? String(POINT_ID) : ""), []);
 
@@ -69,6 +72,7 @@ export default function App() {
     setCard(null);
     setItems([]);
     setCandidatos([]);
+    setFaceSaved(false);
   }, []);
 
   useEffect(() => {
@@ -92,6 +96,7 @@ export default function App() {
       const opened = await kioskObterOuCriarComanda({ pointId, atletaId: res.atleta.id });
       setCard(opened.card);
       await refreshCard(opened.card.id);
+      setFaceSaved(false);
       setStep("comanda");
     } catch (e: any) {
       setError(e?.message ? String(e.message) : "Falha ao buscar atleta");
@@ -105,7 +110,7 @@ export default function App() {
       setError(null);
       setBusy(true);
       try {
-        const res = await kioskReconhecerAtleta({ pointId, embedding, topK: 5, threshold: 0.5, modelVersion: "mediapipe-image-embedder-v1" });
+        const res = await kioskReconhecerAtleta({ pointId, embedding, topK: 5, threshold: 0.5, modelVersion: FACE_MODEL_VERSION });
         if (!res.candidatos || res.candidatos.length === 0) {
           setError("Nenhum atleta reconhecido. Tente novamente ou use telefone.");
           return;
@@ -116,6 +121,7 @@ export default function App() {
           const opened = await kioskObterOuCriarComanda({ pointId, atletaId: a.id });
           setCard(opened.card);
           await refreshCard(opened.card.id);
+          setFaceSaved(false);
           setStep("comanda");
           return;
         }
@@ -139,6 +145,7 @@ export default function App() {
         const opened = await kioskObterOuCriarComanda({ pointId, atletaId: a.id });
         setCard(opened.card);
         await refreshCard(opened.card.id);
+        setFaceSaved(false);
         setStep("comanda");
       } catch (e: any) {
         setError(e?.message ? String(e.message) : "Falha ao abrir comanda");
@@ -175,6 +182,29 @@ export default function App() {
   }, [handleDetectedBarcode, manualBarcode]);
 
   const total = useMemo(() => items.reduce((acc, it) => acc + (it.precoTotal || 0), 0), [items]);
+
+  const handleCadastrarRosto = useCallback(
+    async (embedding: number[]) => {
+      if (!atleta) return;
+      setBusy(true);
+      setError(null);
+      try {
+        await kioskCadastrarFaceAtleta({
+          pointId,
+          atletaId: atleta.id,
+          embedding,
+          modelVersion: FACE_MODEL_VERSION,
+        });
+        setFaceSaved(true);
+      } catch (e: any) {
+        setFaceSaved(false);
+        setError(e?.message ? String(e.message) : "Falha ao cadastrar rosto");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [atleta, pointId]
+  );
 
   return (
     <div className="kiosk">
@@ -274,6 +304,12 @@ export default function App() {
               <div className="total">{formatMoney(total)}</div>
             </div>
 
+            <div className="stack">
+              <div className="muted">Criar/atualizar reconhecimento facial</div>
+              <FaceIdentify onEmbedding={handleCadastrarRosto} disabled={busy} />
+              {faceSaved ? <div className="alert alert--success">Reconhecimento facial salvo.</div> : null}
+            </div>
+
             <div className="list">
               {items.length === 0 ? (
                 <div className="muted">Nenhum item lançado ainda.</div>
@@ -281,10 +317,11 @@ export default function App() {
                 items.map((it) => (
                   <div className="list__item" key={it.id}>
                     <div className="list__left">
-                      <div className="item__name">{it.produto?.nome || it.produtoId}</div>
+                      <div className="item__name">{it.produto?.nome ?? "Produto não cadastrado"}</div>
                       <div className="muted">
                         {it.quantidade} x {formatMoney(it.precoUnitario)}
                       </div>
+                      {!it.produto?.nome ? <div className="muted selectable">Código de barras: {it.produtoId}</div> : null}
                     </div>
                     <div className="item__price">{formatMoney(it.precoTotal)}</div>
                   </div>

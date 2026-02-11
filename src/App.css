@@ -50,6 +50,10 @@
   font-size: 14px;
 }
 
+.selectable {
+  user-select: text;
+}
+
 .stack {
   display: flex;
   flex-direction: column;

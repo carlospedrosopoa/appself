@@ -50,6 +50,19 @@ export async function kioskReconhecerAtleta(input: {
   });
 }
 
+export async function kioskCadastrarFaceAtleta(input: {
+  pointId: string;
+  atletaId: string;
+  embedding: number[];
+  modelVersion?: string;
+}) {
+  const { pointId, atletaId, embedding, modelVersion } = input;
+  return await apiFetch<{ ok: true }>(`/api/kiosk/atleta/${encodeURIComponent(atletaId)}/face`, {
+    method: "POST",
+    json: { pointId, embedding, modelVersion },
+  });
+}
+
 export async function kioskObterOuCriarComanda(input: {
   pointId: string;
   atletaId: string;

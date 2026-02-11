@@ -11,7 +11,12 @@
   },
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.32",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
     "@zxing/browser": "^0.1.5",
+    "face-api.js": "^0.22.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
