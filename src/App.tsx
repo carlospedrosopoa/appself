@@ -166,7 +166,12 @@ export default function App() {
         await kioskAdicionarItem({ pointId, cardId: card.id, barcode: value, quantidade: 1 });
         await refreshCard(card.id);
       } catch (e: any) {
-        setError(e?.message ? String(e.message) : "Falha ao adicionar item");
+        const msg = e?.message ? String(e.message) : "Falha ao adicionar item";
+        if (msg.toLowerCase().includes("produto não encontrado") || msg.toLowerCase().includes("produto nao encontrado")) {
+          setError(`Produto não encontrado (código: ${value})`);
+        } else {
+          setError(msg);
+        }
       } finally {
         setBusy(false);
       }
@@ -267,7 +272,7 @@ export default function App() {
               </button>
             </div>
             <div className="muted">Posicione o rosto na câmera e toque em Reconhecer.</div>
-            <FaceIdentify onEmbedding={handleFaceEmbedding} disabled={busy} />
+            <FaceIdentify onEmbedding={handleFaceEmbedding} disabled={busy} size="large" />
           </div>
         ) : null}
 
@@ -306,7 +311,7 @@ export default function App() {
 
             <div className="stack">
               <div className="muted">Criar/atualizar reconhecimento facial</div>
-              <FaceIdentify onEmbedding={handleCadastrarRosto} disabled={busy} />
+              <FaceIdentify onEmbedding={handleCadastrarRosto} disabled={busy} size="large" />
               {faceSaved ? <div className="alert alert--success">Reconhecimento facial salvo.</div> : null}
             </div>
 

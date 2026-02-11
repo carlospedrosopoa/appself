@@ -4,8 +4,9 @@ import { extractFaceEmbedding } from "../features/face/extractFaceEmbedding";
 export function FaceIdentify(props: {
   onEmbedding: (embedding: number[]) => void;
   disabled?: boolean;
+  size?: "normal" | "large";
 }) {
-  const { onEmbedding, disabled } = props;
+  const { onEmbedding, disabled, size = "large" } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,7 +59,16 @@ export function FaceIdentify(props: {
 
   return (
     <div style={{ width: "100%" }}>
-      <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", borderRadius: 16, overflow: "hidden" }}>
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          aspectRatio: size === "large" ? "4/5" : "16/9",
+          borderRadius: 16,
+          overflow: "hidden",
+          maxHeight: size === "large" ? "62vh" : undefined,
+        }}
+      >
         <video
           ref={videoRef}
           muted
@@ -89,4 +99,3 @@ export function FaceIdentify(props: {
     </div>
   );
 }
-
