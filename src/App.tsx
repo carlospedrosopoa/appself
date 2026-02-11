@@ -369,7 +369,7 @@ export default function App() {
               </button>
             </div>
 
-            <BarcodeScanner onDetected={handleDetectedBarcode} paused={busy} />
+            <BarcodeScanner onDetected={handleDetectedBarcode} paused={busy} variant="narrow" />
 
             <div className="row">
               <input

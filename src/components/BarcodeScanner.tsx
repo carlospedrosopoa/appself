@@ -4,8 +4,9 @@ import { BrowserMultiFormatReader } from "@zxing/browser";
 export function BarcodeScanner(props: {
   onDetected: (value: string) => void;
   paused?: boolean;
+  variant?: "full" | "narrow";
 }) {
-  const { onDetected, paused } = props;
+  const { onDetected, paused, variant = "narrow" } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +46,7 @@ export function BarcodeScanner(props: {
   }, [reader, onDetected, paused]);
 
   return (
-    <div style={{ width: "100%" }}>
+    <div style={{ width: "100%", maxWidth: variant === "narrow" ? 520 : undefined, margin: "0 auto" }}>
       <div style={{ position: "relative", width: "100%", aspectRatio: "16/9", borderRadius: 16, overflow: "hidden" }}>
         <video
           ref={videoRef}
