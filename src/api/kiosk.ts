@@ -10,6 +10,7 @@ export type KioskPoint = {
   id: string;
   nome: string;
   logoUrl?: string | null;
+  pixChave?: string | null;
 };
 
 export type KioskCard = {
@@ -44,7 +45,7 @@ export async function kioskBuscarAtletaPorTelefone(input: {
 }
 
 export async function kioskGetPoint(pointId: string) {
-  return await apiFetch<KioskPoint>(`/api/point/${encodeURIComponent(pointId)}`, { method: "GET" });
+  return await apiFetch<KioskPoint>(`/api/kiosk/point/${encodeURIComponent(pointId)}`, { method: "GET" });
 }
 
 export async function kioskReconhecerAtleta(input: {

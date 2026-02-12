@@ -22,7 +22,6 @@ type Step = "idle" | "phone" | "face" | "comanda" | "scan";
 
 const POINT_ID = import.meta.env.VITE_POINT_ID as string | undefined;
 const FACE_MODEL_VERSION = "mediapipe-image-embedder-v1";
-const PIX_CHAVE_CNPJ = "51547296000104";
 const PIX_CIDADE = "PORTO ALEGRE";
 
 function normalizePhone(value: string) {
@@ -191,14 +190,16 @@ export default function App() {
   const total = useMemo(() => items.reduce((acc, it) => acc + (it.precoTotal || 0), 0), [items]);
   const pixPayload = useMemo(() => {
     if (!card) return null;
+    const chave = point?.pixChave ? String(point.pixChave).trim() : "";
+    if (!chave) return null;
     return buildPixPayload({
-      chave: PIX_CHAVE_CNPJ,
+      chave,
       valor: total,
       nomeRecebedor: point?.nome || "Carlão BT Online",
       cidadeRecebedor: PIX_CIDADE,
       txid: `CARD${card.numeroCard}`,
     });
-  }, [card, point?.nome, total]);
+  }, [card, point?.nome, point?.pixChave, total]);
 
   useEffect(() => {
     if (!showPix || !pixPayload) {
@@ -367,7 +368,11 @@ export default function App() {
               <button className="btn" onClick={() => setStep("scan")} disabled={busy}>
                 Ler código de barras
               </button>
-              <button className="btn btn--ghost" onClick={() => setShowPix(true)} disabled={busy || total <= 0}>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setShowPix(true)}
+                disabled={busy || total <= 0 || !point?.pixChave}
+              >
                 Gerar QRCode Pix
               </button>
             </div>
@@ -408,7 +413,7 @@ export default function App() {
         ) : null}
       </div>
 
-      {showPix && card ? (
+      {showPix && card && pixPayload ? (
         <div className="modalOverlay" role="dialog" aria-modal="true">
           <div className="modalCard">
             <div className="row row--space">
