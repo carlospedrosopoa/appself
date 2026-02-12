@@ -25,6 +25,44 @@
   letter-spacing: 0.3px;
 }
 
+.kiosk__brandLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.kiosk__logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
+}
+
+.kiosk__brandText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.kiosk__brandTitle {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kiosk__brandBadge {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(15, 23, 42, 0.6);
+}
+
 .kiosk__card {
   flex: 1;
   border-radius: 22px;
@@ -41,6 +79,21 @@
   margin: 0;
   font-size: 28px;
   line-height: 1.1;
+}
+
+.welcome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.welcome__logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #fff;
 }
 
 .subtitle {
@@ -187,6 +240,16 @@
 
   .title {
     font-size: 24px;
+  }
+
+  .kiosk__logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .welcome__logo {
+    width: 40px;
+    height: 40px;
   }
 
   .btn {

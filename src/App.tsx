@@ -5,11 +5,13 @@ import {
   kioskBuscarAtletaPorTelefone,
   kioskCadastrarFaceAtleta,
   kioskGetComanda,
+  kioskGetPoint,
   kioskObterOuCriarComanda,
   kioskReconhecerAtleta,
   type KioskAtleta,
   type KioskCard,
   type KioskItem,
+  type KioskPoint,
 } from "./api/kiosk";
 import { BarcodeScanner } from "./components/BarcodeScanner";
 import { FaceIdentify } from "./components/FaceIdentify";
@@ -34,6 +36,7 @@ export default function App() {
 
   const [phone, setPhone] = useState("");
   const [manualBarcode, setManualBarcode] = useState("");
+  const [point, setPoint] = useState<KioskPoint | null>(null);
   const [atleta, setAtleta] = useState<KioskAtleta | null>(null);
   const [card, setCard] = useState<KioskCard | null>(null);
   const [items, setItems] = useState<KioskItem[]>([]);
@@ -83,6 +86,20 @@ export default function App() {
   useEffect(() => {
     if (pointId) return;
     setError("VITE_POINT_ID não configurado");
+  }, [pointId]);
+
+  useEffect(() => {
+    if (!pointId) return;
+    let cancelled = false;
+    kioskGetPoint(pointId)
+      .then((p) => {
+        if (cancelled) return;
+        setPoint(p);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, [pointId]);
 
   const handleBuscarPorTelefone = useCallback(async () => {
@@ -192,7 +209,15 @@ export default function App() {
   return (
     <div className="kiosk">
       <div className="kiosk__top">
-        <div className="kiosk__brand">Autoatendimento</div>
+        <div className="kiosk__brand">
+          <div className="kiosk__brandLeft">
+            {point?.logoUrl ? <img className="kiosk__logo" src={point.logoUrl} alt={point.nome} /> : null}
+            <div className="kiosk__brandText">
+              <div className="kiosk__brandTitle">{point?.nome || "Autoatendimento"}</div>
+              <div className="kiosk__brandBadge">Autoatendimento</div>
+            </div>
+          </div>
+        </div>
         <div className="kiosk__actions">
           {step !== "idle" ? (
             <button className="btn btn--ghost" onClick={reset} disabled={busy}>
@@ -207,7 +232,10 @@ export default function App() {
 
         {step === "idle" ? (
           <div className="stack">
-            <h1 className="title">Bem-vindo</h1>
+            <div className="welcome">
+              {point?.logoUrl ? <img className="welcome__logo" src={point.logoUrl} alt={point.nome} /> : null}
+              <h1 className="title">Bem-vindo</h1>
+            </div>
             <p className="muted">Para começar, identifique o atleta.</p>
             <button className="btn" onClick={startPhoneFlow} disabled={busy || !pointId}>
               Identificar por telefone
