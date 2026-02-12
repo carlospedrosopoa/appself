@@ -15,11 +15,15 @@ import {
 } from "./api/kiosk";
 import { BarcodeScanner } from "./components/BarcodeScanner";
 import { FaceIdentify } from "./components/FaceIdentify";
+import { buildPixPayload } from "./features/pix/pix";
+import QRCode from "qrcode";
 
 type Step = "idle" | "phone" | "face" | "comanda" | "scan";
 
 const POINT_ID = import.meta.env.VITE_POINT_ID as string | undefined;
 const FACE_MODEL_VERSION = "mediapipe-image-embedder-v1";
+const PIX_CHAVE_CNPJ = "51547296000104";
+const PIX_CIDADE = "PORTO ALEGRE";
 
 function normalizePhone(value: string) {
   return value.replace(/\D/g, "");
@@ -42,6 +46,8 @@ export default function App() {
   const [items, setItems] = useState<KioskItem[]>([]);
   const [faceSaved, setFaceSaved] = useState(false);
   const [showFaceEnroll, setShowFaceEnroll] = useState(false);
+  const [showPix, setShowPix] = useState(false);
+  const [pixQrDataUrl, setPixQrDataUrl] = useState<string | null>(null);
 
   const pointId = useMemo(() => (POINT_ID ? String(POINT_ID) : ""), []);
 
@@ -75,6 +81,8 @@ export default function App() {
     setItems([]);
     setFaceSaved(false);
     setShowFaceEnroll(false);
+    setShowPix(false);
+    setPixQrDataUrl(null);
   }, []);
 
   useEffect(() => {
@@ -181,6 +189,33 @@ export default function App() {
   }, [handleDetectedBarcode, manualBarcode]);
 
   const total = useMemo(() => items.reduce((acc, it) => acc + (it.precoTotal || 0), 0), [items]);
+  const pixPayload = useMemo(() => {
+    if (!card) return null;
+    return buildPixPayload({
+      chave: PIX_CHAVE_CNPJ,
+      valor: total,
+      nomeRecebedor: point?.nome || "Carlão BT Online",
+      cidadeRecebedor: PIX_CIDADE,
+      txid: `CARD${card.numeroCard}`,
+    });
+  }, [card, point?.nome, total]);
+
+  useEffect(() => {
+    if (!showPix || !pixPayload) {
+      setPixQrDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(pixPayload, { margin: 1, width: 320, errorCorrectionLevel: "M" })
+      .then((url: string) => {
+        if (cancelled) return;
+        setPixQrDataUrl(url);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [pixPayload, showPix]);
 
   const handleCadastrarRosto = useCallback(
     async (embedding: number[]) => {
@@ -328,9 +363,14 @@ export default function App() {
               )}
             </div>
 
-            <button className="btn" onClick={() => setStep("scan")} disabled={busy}>
-              Ler código de barras
-            </button>
+            <div className="row">
+              <button className="btn" onClick={() => setStep("scan")} disabled={busy}>
+                Ler código de barras
+              </button>
+              <button className="btn btn--ghost" onClick={() => setShowPix(true)} disabled={busy || total <= 0}>
+                Gerar QRCode Pix
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -367,6 +407,52 @@ export default function App() {
           </div>
         ) : null}
       </div>
+
+      {showPix && card ? (
+        <div className="modalOverlay" role="dialog" aria-modal="true">
+          <div className="modalCard">
+            <div className="row row--space">
+              <div>
+                <div className="subtitle">Pix</div>
+                <div className="muted">
+                  Comanda #{card.numeroCard} • {formatMoney(total)}
+                </div>
+              </div>
+              <button
+                className="btn btn--ghost"
+                onClick={() => {
+                  setShowPix(false);
+                  setPixQrDataUrl(null);
+                }}
+                disabled={busy}
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="pixBox">
+              {pixQrDataUrl ? <img className="pixQr" src={pixQrDataUrl} alt="QRCode Pix" /> : <div className="muted">Gerando QRCode…</div>}
+            </div>
+
+            {pixPayload ? (
+              <button
+                className="btn"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(pixPayload);
+                  } catch {
+                  }
+                }}
+                disabled={!pixPayload}
+              >
+                Copiar código Pix
+              </button>
+            ) : null}
+
+            {pixPayload ? <div className="muted selectable pixCode">{pixPayload}</div> : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
