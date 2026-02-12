@@ -14,7 +14,7 @@ import {
 import { BarcodeScanner } from "./components/BarcodeScanner";
 import { FaceIdentify } from "./components/FaceIdentify";
 
-type Step = "idle" | "phone" | "face" | "pick" | "comanda" | "scan";
+type Step = "idle" | "phone" | "face" | "comanda" | "scan";
 
 const POINT_ID = import.meta.env.VITE_POINT_ID as string | undefined;
 const FACE_MODEL_VERSION = "mediapipe-image-embedder-v1";
@@ -37,7 +37,6 @@ export default function App() {
   const [atleta, setAtleta] = useState<KioskAtleta | null>(null);
   const [card, setCard] = useState<KioskCard | null>(null);
   const [items, setItems] = useState<KioskItem[]>([]);
-  const [candidatos, setCandidatos] = useState<Array<KioskAtleta & { score: number }>>([]);
   const [faceSaved, setFaceSaved] = useState(false);
   const [showFaceEnroll, setShowFaceEnroll] = useState(false);
 
@@ -59,7 +58,6 @@ export default function App() {
 
   const startFaceFlow = useCallback(() => {
     setError(null);
-    setCandidatos([]);
     setStep("face");
   }, []);
 
@@ -72,7 +70,6 @@ export default function App() {
     setAtleta(null);
     setCard(null);
     setItems([]);
-    setCandidatos([]);
     setFaceSaved(false);
     setShowFaceEnroll(false);
   }, []);
@@ -118,42 +115,17 @@ export default function App() {
           setError("Nenhum atleta reconhecido. Tente novamente ou use telefone.");
           return;
         }
-        if (res.candidatos.length === 1) {
-          const a = res.candidatos[0];
-          setAtleta({ id: a.id, nome: a.nome, telefone: a.telefone });
-          const opened = await kioskObterOuCriarComanda({ pointId, atletaId: a.id });
-          setCard(opened.card);
-          await refreshCard(opened.card.id);
-          setFaceSaved(false);
-          setShowFaceEnroll(false);
-          setStep("comanda");
-          return;
-        }
-        setCandidatos(res.candidatos);
-        setStep("pick");
-      } catch (e: any) {
-        setError(e?.message ? String(e.message) : "Falha ao reconhecer atleta");
-      } finally {
-        setBusy(false);
-      }
-    },
-    [pointId, refreshCard]
-  );
-
-  const handleSelecionarCandidato = useCallback(
-    async (a: KioskAtleta) => {
-      setError(null);
-      setBusy(true);
-      try {
-        setAtleta(a);
+        const a = res.candidatos[0];
+        setAtleta({ id: a.id, nome: a.nome, telefone: a.telefone });
         const opened = await kioskObterOuCriarComanda({ pointId, atletaId: a.id });
         setCard(opened.card);
         await refreshCard(opened.card.id);
         setFaceSaved(false);
         setShowFaceEnroll(false);
-        setStep("comanda");
+        setManualBarcode("");
+        setStep("scan");
       } catch (e: any) {
-        setError(e?.message ? String(e.message) : "Falha ao abrir comanda");
+        setError(e?.message ? String(e.message) : "Falha ao reconhecer atleta");
       } finally {
         setBusy(false);
       }
@@ -279,29 +251,6 @@ export default function App() {
             </div>
             <div className="muted">Posicione o rosto na câmera e toque em Reconhecer.</div>
             <FaceIdentify onEmbedding={handleFaceEmbedding} disabled={busy} size="large" />
-          </div>
-        ) : null}
-
-        {step === "pick" ? (
-          <div className="stack">
-            <div className="row row--space">
-              <h2 className="subtitle">Selecione seu perfil</h2>
-              <button className="btn btn--ghost" onClick={startFaceFlow} disabled={busy}>
-                Tentar novamente
-              </button>
-            </div>
-            <div className="list">
-              {candidatos.map((c) => (
-                <button
-                  key={c.id}
-                  className="btn btn--ghost"
-                  onClick={() => handleSelecionarCandidato({ id: c.id, nome: c.nome, telefone: c.telefone })}
-                  disabled={busy}
-                >
-                  {c.nome} ({Math.round(c.score * 100)}%)
-                </button>
-              ))}
-            </div>
           </div>
         ) : null}
 
