@@ -1,8 +1,9 @@
 .kiosk {
   min-height: 100vh;
-  background: radial-gradient(1200px 600px at 50% 0%, #0b2a2e 0%, #071416 55%, #050b0c 100%);
-  color: #f7fafc;
-  padding: 18px;
+  background: radial-gradient(1000px 520px at 50% 0%, #d1fae5 0%, #f8fafc 55%, #f8fafc 100%);
+  color: #0f172a;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -14,9 +15,9 @@
   justify-content: space-between;
   padding: 12px 14px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
 .kiosk__brand {
@@ -27,17 +28,19 @@
 .kiosk__card {
   flex: 1;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 18px;
-  max-width: 900px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 16px;
+  max-width: 560px;
   width: 100%;
   margin: 0 auto;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
 }
 
 .title {
   margin: 0;
-  font-size: 34px;
+  font-size: 28px;
+  line-height: 1.1;
 }
 
 .subtitle {
@@ -46,7 +49,7 @@
 }
 
 .muted {
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(15, 23, 42, 0.68);
   font-size: 14px;
 }
 
@@ -57,7 +60,7 @@
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   align-items: stretch;
 }
 
@@ -76,22 +79,22 @@
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.86);
+  color: rgba(15, 23, 42, 0.82);
 }
 
 .input {
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(15, 23, 42, 0.16);
   padding: 12px 14px;
-  background: rgba(0, 0, 0, 0.25);
-  color: #fff;
+  background: rgba(255, 255, 255, 1);
+  color: #0f172a;
   font-size: 16px;
   outline: none;
 }
 
 .input:focus {
-  border-color: rgba(80, 227, 194, 0.65);
-  box-shadow: 0 0 0 3px rgba(80, 227, 194, 0.18);
+  border-color: rgba(16, 185, 129, 0.9);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.16);
 }
 
 .btn {
@@ -99,8 +102,8 @@
   border: 0;
   border-radius: 16px;
   padding: 12px 14px;
-  background: linear-gradient(180deg, #2be4c4 0%, #12b89e 100%);
-  color: #07211f;
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
+  color: #052e24;
   font-weight: 800;
   font-size: 16px;
   cursor: pointer;
@@ -113,21 +116,27 @@
 
 .btn--ghost {
   background: transparent;
-  color: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(15, 23, 42, 0.16);
 }
 
 .alert {
   padding: 12px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(15, 23, 42, 0.12);
   margin-bottom: 14px;
 }
 
 .alert--error {
-  background: rgba(255, 0, 0, 0.12);
-  border-color: rgba(255, 0, 0, 0.25);
-  color: rgba(255, 255, 255, 0.95);
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.22);
+  color: rgba(15, 23, 42, 0.92);
+}
+
+.alert--success {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.22);
+  color: rgba(15, 23, 42, 0.92);
 }
 
 .list {
@@ -136,8 +145,8 @@
   gap: 10px;
   padding: 12px;
   border-radius: 18px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   max-height: 44vh;
   overflow: auto;
 }
@@ -148,8 +157,8 @@
   gap: 12px;
   padding: 12px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .list__left {
@@ -169,4 +178,19 @@
 .total {
   font-weight: 900;
   font-size: 18px;
+}
+
+@media (max-width: 420px) {
+  .kiosk__card {
+    padding: 14px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .btn {
+    font-size: 15px;
+    padding: 11px 12px;
+  }
 }
