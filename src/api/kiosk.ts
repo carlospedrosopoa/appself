@@ -34,6 +34,14 @@ export type KioskItem = {
   } | null;
 };
 
+export type KioskProduto = {
+  id: string;
+  nome: string;
+  precoVenda: number;
+  categoria?: string | null;
+  barcode?: string | null;
+};
+
 export async function kioskBuscarAtletaPorTelefone(input: {
   pointId: string;
   telefone: string;
@@ -92,10 +100,26 @@ export async function kioskGetComanda(input: { pointId: string; cardId: string }
   );
 }
 
+export async function kioskGetComandaPorNumero(input: { pointId: string; numeroCard: number }) {
+  return await apiFetch<{ card: KioskCard; itens: KioskItem[] }>(`/api/kiosk/comanda/por-numero`, {
+    method: "POST",
+    json: { ...input, incluirItens: true },
+  });
+}
+
+export async function kioskListarProdutos(input: { pointId: string }) {
+  const { pointId } = input;
+  return await apiFetch<{ rapidos: KioskProduto[]; produtos: KioskProduto[] }>(
+    `/api/kiosk/produto/listar?pointId=${encodeURIComponent(pointId)}`,
+    { method: "GET" }
+  );
+}
+
 export async function kioskAdicionarItem(input: {
   pointId: string;
   cardId: string;
-  barcode: string;
+  barcode?: string;
+  produtoId?: string;
   quantidade: number;
 }) {
   const { pointId, cardId, ...body } = input;

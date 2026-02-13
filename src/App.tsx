@@ -5,20 +5,23 @@ import {
   kioskBuscarAtletaPorTelefone,
   kioskCadastrarFaceAtleta,
   kioskGetComanda,
+  kioskGetComandaPorNumero,
   kioskGetPoint,
+  kioskListarProdutos,
   kioskObterOuCriarComanda,
   kioskReconhecerAtleta,
   type KioskAtleta,
   type KioskCard,
   type KioskItem,
   type KioskPoint,
+  type KioskProduto,
 } from "./api/kiosk";
 import { BarcodeScanner } from "./components/BarcodeScanner";
 import { FaceIdentify } from "./components/FaceIdentify";
 import { buildPixPayload } from "./features/pix/pix";
 import QRCode from "qrcode";
 
-type Step = "idle" | "phone" | "face" | "comanda" | "scan";
+type Step = "idle" | "phone" | "face" | "comanda" | "scan" | "products";
 
 const POINT_ID = import.meta.env.VITE_POINT_ID as string | undefined;
 const FACE_MODEL_VERSION = "mediapipe-image-embedder-v1";
@@ -38,6 +41,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   const [phone, setPhone] = useState("");
+  const [numeroComanda, setNumeroComanda] = useState("");
   const [manualBarcode, setManualBarcode] = useState("");
   const [point, setPoint] = useState<KioskPoint | null>(null);
   const [atleta, setAtleta] = useState<KioskAtleta | null>(null);
@@ -47,6 +51,9 @@ export default function App() {
   const [showFaceEnroll, setShowFaceEnroll] = useState(false);
   const [showPix, setShowPix] = useState(false);
   const [pixQrDataUrl, setPixQrDataUrl] = useState<string | null>(null);
+  const [produtosRapidos, setProdutosRapidos] = useState<KioskProduto[]>([]);
+  const [produtos, setProdutos] = useState<KioskProduto[]>([]);
+  const [loadingProdutos, setLoadingProdutos] = useState(false);
 
   const pointId = useMemo(() => (POINT_ID ? String(POINT_ID) : ""), []);
 
@@ -69,11 +76,17 @@ export default function App() {
     setStep("face");
   }, []);
 
+  const startComandaFlow = useCallback(() => {
+    setError(null);
+    setStep("comanda");
+  }, []);
+
   const reset = useCallback(() => {
     setStep("idle");
     setBusy(false);
     setError(null);
     setPhone("");
+    setNumeroComanda("");
     setManualBarcode("");
     setAtleta(null);
     setCard(null);
@@ -82,6 +95,9 @@ export default function App() {
     setShowFaceEnroll(false);
     setShowPix(false);
     setPixQrDataUrl(null);
+    setProdutosRapidos([]);
+    setProdutos([]);
+    setLoadingProdutos(false);
   }, []);
 
   useEffect(() => {
@@ -129,6 +145,27 @@ export default function App() {
     }
   }, [phone, pointId, refreshCard]);
 
+  const handleBuscarPorNumeroComanda = useCallback(async () => {
+    const numero = Number(String(numeroComanda || "").trim());
+    if (!Number.isFinite(numero) || numero <= 0) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await kioskGetComandaPorNumero({ pointId, numeroCard: numero });
+      setAtleta(null);
+      setCard(res.card);
+      setItems(res.itens);
+      setFaceSaved(false);
+      setShowFaceEnroll(false);
+      setManualBarcode("");
+      setStep("comanda");
+    } catch (e: any) {
+      setError(e?.message ? String(e.message) : "Falha ao abrir comanda");
+    } finally {
+      setBusy(false);
+    }
+  }, [numeroComanda, pointId]);
+
   const handleFaceEmbedding = useCallback(
     async (embedding: number[]) => {
       setError(null);
@@ -146,8 +183,7 @@ export default function App() {
         await refreshCard(opened.card.id);
         setFaceSaved(false);
         setShowFaceEnroll(false);
-        setManualBarcode("");
-        setStep("scan");
+        setStep("comanda");
       } catch (e: any) {
         setError(e?.message ? String(e.message) : "Falha ao reconhecer atleta");
       } finally {
@@ -242,6 +278,50 @@ export default function App() {
     [atleta, pointId]
   );
 
+  useEffect(() => {
+    if (step !== "products") return;
+    if (!pointId) return;
+    if (!card) return;
+    let cancelled = false;
+    setLoadingProdutos(true);
+    kioskListarProdutos({ pointId })
+      .then((res) => {
+        if (cancelled) return;
+        setProdutosRapidos(res.rapidos || []);
+        setProdutos(res.produtos || []);
+      })
+      .catch((e: any) => {
+        if (cancelled) return;
+        setError(e?.message ? String(e.message) : "Falha ao listar produtos");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingProdutos(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [card, pointId, step]);
+
+  const handleAdicionarProduto = useCallback(
+    async (produtoId: string) => {
+      if (!card) return;
+      if (busy) return;
+      setBusy(true);
+      setError(null);
+      try {
+        await kioskAdicionarItem({ pointId, cardId: card.id, produtoId, quantidade: 1 });
+        await refreshCard(card.id);
+        setStep("comanda");
+      } catch (e: any) {
+        setError(e?.message ? String(e.message) : "Falha ao adicionar item");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, card, pointId, refreshCard]
+  );
+
   return (
     <div className="kiosk">
       <div className="kiosk__top">
@@ -279,6 +359,20 @@ export default function App() {
             <button className="btn btn--ghost" onClick={startFaceFlow} disabled={busy || !pointId}>
               Identificar por rosto
             </button>
+            <div className="divider" />
+            <div className="subtitle">Já tem o número da comanda?</div>
+            <div className="row">
+              <input
+                className="input"
+                value={numeroComanda}
+                onChange={(e) => setNumeroComanda(e.target.value)}
+                placeholder="Número da comanda"
+                inputMode="numeric"
+              />
+              <button className="btn" onClick={handleBuscarPorNumeroComanda} disabled={busy || !pointId || String(numeroComanda).trim().length === 0}>
+                Abrir
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -318,32 +412,34 @@ export default function App() {
           </div>
         ) : null}
 
-        {step === "comanda" && atleta && card ? (
+        {step === "comanda" && card ? (
           <div className="stack">
             <div className="row row--space">
               <div>
-                <div className="subtitle">{atleta.nome}</div>
+                {atleta ? <div className="subtitle">{atleta.nome}</div> : <div className="subtitle">Comanda</div>}
                 <div className="muted">Comanda #{card.numeroCard}</div>
               </div>
               <div className="total">{formatMoney(total)}</div>
             </div>
 
-            <div className="stack">
-              <div className="row row--space">
-                <div className="muted">Reconhecimento facial</div>
-                {showFaceEnroll ? (
-                  <button className="btn btn--ghost" onClick={() => setShowFaceEnroll(false)} disabled={busy}>
-                    Fechar câmera
-                  </button>
-                ) : (
-                  <button className="btn btn--ghost" onClick={() => setShowFaceEnroll(true)} disabled={busy}>
-                    Criar/atualizar
-                  </button>
-                )}
+            {atleta ? (
+              <div className="stack">
+                <div className="row row--space">
+                  <div className="muted">Reconhecimento facial</div>
+                  {showFaceEnroll ? (
+                    <button className="btn btn--ghost" onClick={() => setShowFaceEnroll(false)} disabled={busy}>
+                      Fechar câmera
+                    </button>
+                  ) : (
+                    <button className="btn btn--ghost" onClick={() => setShowFaceEnroll(true)} disabled={busy}>
+                      Criar/atualizar
+                    </button>
+                  )}
+                </div>
+                {showFaceEnroll ? <FaceIdentify onEmbedding={handleCadastrarRosto} disabled={busy} size="large" /> : null}
+                {faceSaved ? <div className="alert alert--success">Reconhecimento facial salvo.</div> : null}
               </div>
-              {showFaceEnroll ? <FaceIdentify onEmbedding={handleCadastrarRosto} disabled={busy} size="large" /> : null}
-              {faceSaved ? <div className="alert alert--success">Reconhecimento facial salvo.</div> : null}
-            </div>
+            ) : null}
 
             <div className="list">
               {items.length === 0 ? (
@@ -364,29 +460,28 @@ export default function App() {
               )}
             </div>
 
-            <div className="row">
-              <button className="btn" onClick={() => setStep("scan")} disabled={busy}>
+            <div className="row row--wrap">
+              <button className="btn" onClick={() => setStep("products")} disabled={busy}>
+                Adicionar item
+              </button>
+              <button className="btn btn--ghost" onClick={() => setStep("scan")} disabled={busy}>
                 Ler código de barras
               </button>
-              <button
-                className="btn btn--ghost"
-                onClick={() => setShowPix(true)}
-                disabled={busy || total <= 0 || !point?.pixChave}
-              >
+              <button className="btn btn--ghost" onClick={() => setShowPix(true)} disabled={busy || total <= 0 || !point?.pixChave}>
                 Gerar QRCode Pix
               </button>
             </div>
           </div>
         ) : null}
 
-        {step === "scan" && atleta && card ? (
+        {step === "scan" && card ? (
           <div className="stack">
             <div className="row row--space">
               <div>
-                <div className="subtitle">{atleta.nome}</div>
+                {atleta ? <div className="subtitle">{atleta.nome}</div> : <div className="subtitle">Comanda</div>}
                 <div className="muted">Comanda #{card.numeroCard}</div>
               </div>
-              <button className="btn btn--ghost" onClick={() => setStep("comanda")} disabled={busy}>
+              <button className="btn btn--ghost" onClick={startComandaFlow} disabled={busy}>
                 Voltar
               </button>
             </div>
@@ -409,6 +504,74 @@ export default function App() {
             <div className="muted">
               Ao ler, o item é lançado automaticamente (quantidade 1). Para repetir, leia novamente.
             </div>
+          </div>
+        ) : null}
+
+        {step === "products" && card ? (
+          <div className="stack">
+            <div className="row row--space">
+              <div>
+                <div className="subtitle">Adicionar item</div>
+                <div className="muted">Comanda #{card.numeroCard}</div>
+              </div>
+              <button className="btn btn--ghost" onClick={startComandaFlow} disabled={busy}>
+                Voltar
+              </button>
+            </div>
+
+            {loadingProdutos ? <div className="muted">Carregando produtos…</div> : null}
+
+            {!loadingProdutos && produtosRapidos.length > 0 ? (
+              <div className="stack">
+                <div className="subtitle">Acesso rápido</div>
+                <div className="productGrid productGrid--quick">
+                  {produtosRapidos.map((p) => (
+                    <button key={p.id} className="productCard" onClick={() => handleAdicionarProduto(p.id)} disabled={busy}>
+                      <div className="productCard__name">{p.nome}</div>
+                      <div className="productCard__meta">
+                        <span>{formatMoney(p.precoVenda)}</span>
+                        {p.categoria ? <span className="productCard__pill">{p.categoria}</span> : null}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {!loadingProdutos && produtos.length > 0 ? (
+              <div className="stack">
+                <div className="subtitle">Produtos</div>
+                <div className="productList">
+                  {Object.entries(
+                    produtos.reduce<Record<string, KioskProduto[]>>((acc, p) => {
+                      const key = p.categoria ? String(p.categoria) : "Outros";
+                      (acc[key] ||= []).push(p);
+                      return acc;
+                    }, {})
+                  )
+                    .sort(([a], [b]) => a.localeCompare(b, "pt-BR"))
+                    .map(([categoria, list]) => (
+                      <div key={categoria} className="stack">
+                        <div className="muted">{categoria}</div>
+                        <div className="productGrid">
+                          {list.map((p) => (
+                            <button key={p.id} className="productCard" onClick={() => handleAdicionarProduto(p.id)} disabled={busy}>
+                              <div className="productCard__name">{p.nome}</div>
+                              <div className="productCard__meta">
+                                <span>{formatMoney(p.precoVenda)}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ) : null}
+
+            {!loadingProdutos && produtosRapidos.length === 0 && produtos.length === 0 ? (
+              <div className="muted">Nenhum produto ativo encontrado.</div>
+            ) : null}
           </div>
         ) : null}
       </div>
