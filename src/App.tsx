@@ -204,7 +204,13 @@ export default function App() {
         await refreshCard(card.id);
       } catch (e: any) {
         const msg = e?.message ? String(e.message) : "Falha ao adicionar item";
-        if (msg.toLowerCase().includes("produto não encontrado") || msg.toLowerCase().includes("produto nao encontrado")) {
+        const m = msg.toLowerCase();
+        if (
+          m.includes("produto não encontrado") ||
+          m.includes("produto nao encontrado") ||
+          m.includes("produto não disponível no autoatendimento") ||
+          m.includes("produto nao disponivel no autoatendimento")
+        ) {
           setError(`Produto não encontrado (código: ${value})`);
         } else {
           setError(msg);
