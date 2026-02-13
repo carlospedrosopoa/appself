@@ -6,6 +6,7 @@ export type ApiError = {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined;
 const KIOSK_KEY = import.meta.env.VITE_KIOSK_KEY as string | undefined;
+const AUTH_TOKEN_STORAGE_KEY = "appself.gestorToken";
 
 function joinUrl(base: string, path: string) {
   if (!base) return path;
@@ -55,3 +56,34 @@ export async function apiFetch<T>(
   return payload as T;
 }
 
+export function getAuthToken(): string | null {
+  try {
+    return window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string) {
+  try {
+    window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+  } catch {
+  }
+}
+
+export function clearAuthToken() {
+  try {
+    window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  } catch {
+  }
+}
+
+export async function apiFetchAuth<T>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
+  const token = getAuthToken();
+  if (!token) {
+    throw { status: 401, message: "Não autenticado" } satisfies ApiError;
+  }
+  const headers = new Headers(init?.headers);
+  headers.set("authorization", `Bearer ${token}`);
+  return await apiFetch<T>(path, { ...init, headers });
+}

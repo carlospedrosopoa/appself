@@ -20,10 +20,10 @@ import { BarcodeScanner } from "./components/BarcodeScanner";
 import { FaceIdentify } from "./components/FaceIdentify";
 import { buildPixPayload } from "./features/pix/pix";
 import QRCode from "qrcode";
+import { gestorLogin, gestorLogout, gestorMe, type GestorUser } from "./api/auth";
 
-type Step = "idle" | "phone" | "face" | "comanda" | "scan" | "products";
+type Step = "login" | "idle" | "phone" | "face" | "comanda" | "scan" | "products";
 
-const POINT_ID = import.meta.env.VITE_POINT_ID as string | undefined;
 const FACE_MODEL_VERSION = "mediapipe-image-embedder-v1";
 const PIX_CIDADE = "PORTO ALEGRE";
 
@@ -36,9 +36,13 @@ function formatMoney(value: number) {
 }
 
 export default function App() {
-  const [step, setStep] = useState<Step>("idle");
+  const [step, setStep] = useState<Step>("login");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [gestorEmail, setGestorEmail] = useState("");
+  const [gestorSenha, setGestorSenha] = useState("");
+  const [gestor, setGestor] = useState<GestorUser | null>(null);
 
   const [phone, setPhone] = useState("");
   const [numeroComanda, setNumeroComanda] = useState("");
@@ -55,7 +59,7 @@ export default function App() {
   const [produtos, setProdutos] = useState<KioskProduto[]>([]);
   const [loadingProdutos, setLoadingProdutos] = useState(false);
 
-  const pointId = useMemo(() => (POINT_ID ? String(POINT_ID) : ""), []);
+  const pointId = useMemo(() => (gestor?.pointIdGestor ? String(gestor.pointIdGestor) : ""), [gestor?.pointIdGestor]);
 
   const refreshCard = useCallback(
     async (cardId: string) => {
@@ -81,7 +85,7 @@ export default function App() {
     setStep("comanda");
   }, []);
 
-  const reset = useCallback(() => {
+  const resetSessao = useCallback(() => {
     setStep("idle");
     setBusy(false);
     setError(null);
@@ -100,16 +104,42 @@ export default function App() {
     setLoadingProdutos(false);
   }, []);
 
-  useEffect(() => {
-    if (step === "idle") return;
-    const t = window.setTimeout(() => reset(), 120_000);
-    return () => window.clearTimeout(t);
-  }, [reset, step, busy, phone, manualBarcode, atleta, card, items]);
+  const logoutGestor = useCallback(() => {
+    gestorLogout();
+    setGestor(null);
+    setPoint(null);
+    setGestorEmail("");
+    setGestorSenha("");
+    setBusy(false);
+    setError(null);
+    setStep("login");
+  }, []);
 
   useEffect(() => {
-    if (pointId) return;
-    setError("VITE_POINT_ID não configurado");
-  }, [pointId]);
+    if (step === "idle" || step === "login") return;
+    const t = window.setTimeout(() => resetSessao(), 120_000);
+    return () => window.clearTimeout(t);
+  }, [resetSessao, step, busy, phone, manualBarcode, atleta, card, items]);
+
+  useEffect(() => {
+    if (gestor) return;
+    let cancelled = false;
+    gestorMe()
+      .then((res) => {
+        if (cancelled) return;
+        if (!res.user?.pointIdGestor) {
+          setError("Usuário não vinculado a uma arena (pointIdGestor vazio).");
+          logoutGestor();
+          return;
+        }
+        setGestor(res.user);
+        setStep("idle");
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [gestor, logoutGestor]);
 
   useEffect(() => {
     if (!pointId) return;
@@ -124,6 +154,28 @@ export default function App() {
       cancelled = true;
     };
   }, [pointId]);
+
+  const handleLoginGestor = useCallback(async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const email = gestorEmail.trim();
+      const senha = gestorSenha;
+      const res = await gestorLogin({ email, senha });
+      if (!res.user?.pointIdGestor) {
+        setError("Usuário não vinculado a uma arena (pointIdGestor vazio).");
+        logoutGestor();
+        return;
+      }
+      setGestor(res.user);
+      setGestorSenha("");
+      setStep("idle");
+    } catch (e: any) {
+      setError(e?.message ? String(e.message) : "Falha ao fazer login");
+    } finally {
+      setBusy(false);
+    }
+  }, [gestorEmail, gestorSenha, logoutGestor]);
 
   const handleBuscarPorTelefone = useCallback(async () => {
     setError(null);
@@ -341,8 +393,13 @@ export default function App() {
           </div>
         </div>
         <div className="kiosk__actions">
-          {step !== "idle" ? (
-            <button className="btn btn--ghost" onClick={reset} disabled={busy}>
+          {gestor ? (
+            <button className="btn btn--ghost" onClick={logoutGestor} disabled={busy}>
+              Trocar arena
+            </button>
+          ) : null}
+          {step !== "idle" && step !== "login" ? (
+            <button className="btn btn--ghost" onClick={resetSessao} disabled={busy}>
               Sair
             </button>
           ) : null}
@@ -351,6 +408,38 @@ export default function App() {
 
       <div className="kiosk__card">
         {error ? <div className="alert alert--error">{error}</div> : null}
+
+        {step === "login" ? (
+          <div className="stack">
+            <h1 className="title">Entrar</h1>
+            <div className="muted">Acesse com usuário gestor da arena.</div>
+            <label className="label">
+              Email
+              <input
+                className="input"
+                value={gestorEmail}
+                onChange={(e) => setGestorEmail(e.target.value)}
+                placeholder="gestor@arena.com"
+                inputMode="email"
+                autoComplete="username"
+              />
+            </label>
+            <label className="label">
+              Senha
+              <input
+                className="input"
+                value={gestorSenha}
+                onChange={(e) => setGestorSenha(e.target.value)}
+                placeholder="••••••••"
+                type="password"
+                autoComplete="current-password"
+              />
+            </label>
+            <button className="btn" onClick={handleLoginGestor} disabled={busy || !gestorEmail.trim() || !gestorSenha.trim()}>
+              {busy ? "Entrando..." : "Entrar"}
+            </button>
+          </div>
+        ) : null}
 
         {step === "idle" ? (
           <div className="stack">
@@ -375,7 +464,11 @@ export default function App() {
                 placeholder="Número da comanda"
                 inputMode="numeric"
               />
-              <button className="btn" onClick={handleBuscarPorNumeroComanda} disabled={busy || !pointId || String(numeroComanda).trim().length === 0}>
+              <button
+                className="btn"
+                onClick={handleBuscarPorNumeroComanda}
+                disabled={busy || !pointId || String(numeroComanda).trim().length === 0}
+              >
                 Abrir
               </button>
             </div>
