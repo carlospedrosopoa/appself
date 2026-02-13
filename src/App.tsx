@@ -152,7 +152,7 @@ export default function App() {
     setBusy(true);
     try {
       const res = await kioskGetComandaPorNumero({ pointId, numeroCard: numero });
-      setAtleta(null);
+      setAtleta(res.atleta);
       setCard(res.card);
       setItems(res.itens);
       setFaceSaved(false);
@@ -422,7 +422,7 @@ export default function App() {
               <div className="total">{formatMoney(total)}</div>
             </div>
 
-            {atleta ? (
+            {atleta && atleta.id !== "avulso" && atleta.id !== "user" ? (
               <div className="stack">
                 <div className="row row--space">
                   <div className="muted">Reconhecimento facial</div>

@@ -101,7 +101,7 @@ export async function kioskGetComanda(input: { pointId: string; cardId: string }
 }
 
 export async function kioskGetComandaPorNumero(input: { pointId: string; numeroCard: number }) {
-  return await apiFetch<{ card: KioskCard; itens: KioskItem[] }>(`/api/kiosk/comanda/por-numero`, {
+  return await apiFetch<{ atleta: KioskAtleta | null; card: KioskCard; itens: KioskItem[] }>(`/api/kiosk/comanda/por-numero`, {
     method: "POST",
     json: { ...input, incluirItens: true },
   });
